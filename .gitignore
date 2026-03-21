@@ -1,0 +1,18 @@
+# Environment files — NEVER upload these
+.env
+.env.local
+.env.production
+.env.development
+
+# Dependencies — too large to upload
+node_modules/
+
+# Next.js build files
+.next/
+out/
+
+# Mac system files
+.DS_Store
+
+# Logs
+*.log
