@@ -11,13 +11,46 @@ export default function Calendar({ commitsByDate, onDayClick, selectedDate }: Pr
   const today = new Date();
   const oneYearAgo = new Date();
   oneYearAgo.setFullYear(today.getFullYear() - 1);
+  oneYearAgo.setDate(oneYearAgo.getDate() + 1);
 
-  // Build all days for the year
-  const days: string[] = [];
-  const current = new Date(oneYearAgo);
-  while (current <= today) {
-    days.push(current.toISOString().split('T')[0]);
-    current.setDate(current.getDate() + 1);
+  // Group weeks by month
+  const monthGroups: {
+    label: string;
+    year: number;
+    weeks: { date: string | null }[][];
+  }[] = [];
+
+  const cursor = new Date(oneYearAgo);
+
+  while (cursor <= today) {
+    const monthLabel = cursor.toLocaleString('default', { month: 'short' });
+    const year = cursor.getFullYear();
+    const weeks: { date: string | null }[][] = [];
+    let currentWeek: { date: string | null }[] = [];
+
+    // Pad first week
+    const firstDayOfWeek = new Date(cursor.getFullYear(), cursor.getMonth(), 1).getDay();
+    for (let i = 0; i < firstDayOfWeek; i++) {
+      currentWeek.push({ date: null });
+    }
+
+    const month = cursor.getMonth();
+    while (cursor <= today && cursor.getMonth() === month) {
+      currentWeek.push({ date: cursor.toISOString().split('T')[0] });
+      if (currentWeek.length === 7) {
+        weeks.push(currentWeek);
+        currentWeek = [];
+      }
+      cursor.setDate(cursor.getDate() + 1);
+    }
+
+    // Pad last week
+    while (currentWeek.length > 0 && currentWeek.length < 7) {
+      currentWeek.push({ date: null });
+    }
+    if (currentWeek.length > 0) weeks.push(currentWeek);
+
+    monthGroups.push({ label: monthLabel, year, weeks });
   }
 
   const getColor = (date: string) => {
@@ -29,66 +62,69 @@ export default function Calendar({ commitsByDate, onDayClick, selectedDate }: Pr
     return 'bg-green-400';
   };
 
-  // Group days by week
-  const weeks: string[][] = [];
-  let week: string[] = [];
-
-  // pad start
-  const firstDay = new Date(days[0]).getDay();
-  for (let i = 0; i < firstDay; i++) {
-    week.push('');
-  }
-
-  days.forEach(day => {
-    week.push(day);
-    if (week.length === 7) {
-      weeks.push(week);
-      week = [];
-    }
-  });
-  if (week.length > 0) weeks.push(week);
-
-  // Month labels
-  const months = ['Jan','Feb','Mar','Apr','May','Jun',
-                   'Jul','Aug','Sep','Oct','Nov','Dec'];
-
   return (
     <div className="w-full overflow-x-auto pb-2">
-      {/* Month labels */}
-      <div className="flex gap-1 mb-1 ml-1">
-        {months.map(m => (
-          <div key={m} className="text-gray-500 text-xs w-8 text-center">
-            {m}
-          </div>
-        ))}
-      </div>
+      <div className="flex gap-3">
+        {/* Day labels */}
+        <div className="flex flex-col gap-1 mt-6 mr-1">
+          {['S','M','T','W','T','F','S'].map((d, i) => (
+            <div
+              key={i}
+              className="text-gray-600 h-3 flex items-center"
+              style={{ fontSize: '9px' }}
+            >
+              {i % 2 === 1 ? d : ''}
+            </div>
+          ))}
+        </div>
 
-      {/* Calendar grid */}
-      <div className="flex gap-1">
-        {weeks.map((week, wi) => (
-          <div key={wi} className="flex flex-col gap-1">
-            {week.map((day, di) => (
-              <div
-                key={di}
-                onClick={() => {
-                  if (day && commitsByDate[day]) {
-                    onDayClick(day, commitsByDate[day]);
-                  }
-                }}
-                title={day ? `${day}: ${commitsByDate[day]?.length || 0} commits` : ''}
-                className={`w-3 h-3 rounded-sm transition-all duration-200
-                  ${day ? getColor(day) : 'opacity-0'}
-                  ${day && commitsByDate[day] ? 'cursor-pointer hover:ring-1 hover:ring-green-400' : ''}
-                  ${selectedDate === day ? 'ring-2 ring-white' : ''}
-                `}
-              />
-            ))}
+        {/* Month groups */}
+        {monthGroups.map((group, gi) => (
+          <div key={gi} className="flex flex-col">
+
+            {/* Month + year label */}
+            <div className="flex items-center gap-1 mb-1">
+              <span className="text-gray-400 text-xs font-medium">
+                {group.label}
+              </span>
+              <span className="text-gray-600 text-xs">
+                {group.year}
+              </span>
+            </div>
+
+            {/* Weeks grid */}
+            <div className="flex gap-1">
+              {group.weeks.map((week, wi) => (
+                <div key={wi} className="flex flex-col gap-1">
+                  {week.map(({ date }, di) => (
+                    <div
+                      key={di}
+                      onClick={() => {
+                        if (date && commitsByDate[date]) {
+                          onDayClick(date, commitsByDate[date]);
+                        }
+                      }}
+                      title={date
+                        ? `${date}: ${commitsByDate[date]?.length || 0} commits`
+                        : ''}
+                      className={`w-3 h-3 rounded-sm transition-all duration-200
+                        ${date ? getColor(date) : 'opacity-0'}
+                        ${date && commitsByDate[date]
+                          ? 'cursor-pointer hover:ring-1 hover:ring-green-400'
+                          : ''}
+                        ${selectedDate === date ? 'ring-2 ring-white' : ''}
+                      `}
+                    />
+                  ))}
+                </div>
+              ))}
+            </div>
           </div>
         ))}
       </div>
 
       {/* Legend */}
-      <div className="flex items-center gap-2 mt-2 justify-end">
+      <div className="flex items-center gap-2 mt-3 justify-end">
         <span className="text-gray-500 text-xs">Less</span>
         <div className="w-3 h-3 rounded-sm bg-gray-800"/>
         <div className="w-3 h-3 rounded-sm bg-green-900"/>
