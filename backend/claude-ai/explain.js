@@ -2,9 +2,6 @@ const express = require('express');
 const router = express.Router();
 const { GoogleGenAI } = require('@google/genai');
 
-// Anthropic kept for later
-// const Anthropic = require('@anthropic-ai/sdk');
-
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 router.post('/', async (req, res) => {
@@ -19,46 +16,47 @@ router.post('/', async (req, res) => {
     }
 
     const commitsText = commits.map((c, i) =>
-      `Commit ${i + 1}: "${c.title}" by ${c.author} on ${new Date(c.date).toDateString()}.
-       Changes: +${c.additions} lines added, -${c.deletions} lines removed.`
+      `Index ${i}: "${c.title}" by ${c.author} on ${new Date(c.date).toDateString()}.
+       Changes: +${c.additions} lines added, -${c.deletions} lines removed, ${c.files_changed} files changed.`
     ).join('\n');
 
     const prompt = `You are Kaatupoochi, a professional code change reporter.
     
     For each Git commit below, write a professional summary as if reporting 
-    to a team leader or project manager. Include:
-    
-    1. What was changed — in simple clear words
-    2. Why it matters — impact on the project
-    3. Who will benefit — developers, users, or both
-    
-    Keep each explanation between 3-4 sentences.
-    Use professional but simple language.
-    No technical jargon. Anyone should understand it.
+    to a team leader. Include what changed, why it matters, and who benefits.
+    Keep each explanation 2-3 sentences. Simple clear language.
     
     Commits:
     ${commitsText}
     
-    Return a JSON array like this:
+    Return a JSON array. Use the exact index number provided.
+    Example format:
     [
-      { 
-        "id": "commit_id", 
-        "simple_explanation": "The team updated the login system to prevent crashes when a user tries to sign in without an account. This fix improves app stability and prevents users from seeing error screens. Both the development team and end users benefit from this change as it makes the app more reliable."
-      }
+      { "index": 0, "simple_explanation": "The team fixed a bug in the login screen that was causing crashes. This improves stability for all users trying to sign in." },
+      { "index": 1, "simple_explanation": "A new feature was added to the dashboard showing user activity. This helps team leaders monitor usage patterns." }
     ]
-    Return ONLY the JSON array. Nothing else. No markdown, no backticks.`;
+    Return ONLY the JSON array. No markdown. No backticks. No extra text.`;
+
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: prompt,
     });
 
     const responseText = response.text;
+    console.log('Gemini raw response:', responseText);
+    
     const cleaned = responseText.replace(/```json|```/g, '').trim();
     const explanations = JSON.parse(cleaned);
 
+    // Map index back to commit id
+    const mapped = explanations.map((e) => ({
+      id: commits[e.index]?.id,
+      simple_explanation: e.simple_explanation,
+    }));
+
     res.json({
       success: true,
-      explanations
+      explanations: mapped
     });
 
   } catch (error) {

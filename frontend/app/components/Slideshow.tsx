@@ -28,9 +28,8 @@ export default function Slideshow({ commits, explanations }: Props) {
   };
 
   const explanation = explanations.find(
-    (e) => e.id === commits[current]?.id
-  )?.simple_explanation || 'Explaining...';
-
+  (e) => e.id === commits[current]?.id
+)?.simple_explanation || commits[current]?.title || 'No explanation available';
   return (
     <div className="w-full max-w-3xl">
       {/* Progress dots */}

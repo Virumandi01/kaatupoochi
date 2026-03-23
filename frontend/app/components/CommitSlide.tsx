@@ -47,15 +47,38 @@ export default function CommitSlide({ commit, explanation, slideNumber, total }:
         </div>
       </div>
 
-      {/* Technical details (collapsed) */}
-      <div className="border-t border-gray-800 pt-4">
-        <p className="text-gray-600 text-xs font-mono">
-          {commit.short_id} · {commit.author} · {date}
-        </p>
-        <p className="text-gray-500 text-sm mt-1 italic">
-          &quot;{commit.title}&quot;
-        </p>
-      </div>
+     {/* Files changed list */}
+{commit.files && commit.files.length > 0 && (
+  <div className="border-t border-gray-800 pt-4 mb-4">
+    <p className="text-gray-500 text-xs uppercase tracking-widest mb-2">
+      Files changed
+    </p>
+    <div className="space-y-1">
+      {commit.files.map((file: any, i: number) => (
+        <div key={i} className="flex items-center justify-between
+                                bg-gray-800 rounded-lg px-3 py-2">
+          <span className="text-gray-300 text-xs font-mono truncate flex-1">
+            {file.name}
+          </span>
+          <div className="flex gap-2 ml-2 shrink-0">
+            <span className="text-green-400 text-xs">+{file.additions}</span>
+            <span className="text-red-400 text-xs">-{file.deletions}</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+)}
+
+{/* Technical details */}
+<div className="border-t border-gray-800 pt-4">
+  <p className="text-gray-600 text-xs font-mono">
+    {commit.short_id} · {commit.author} · {date}
+  </p>
+  <p className="text-gray-500 text-sm mt-1 italic">
+    &quot;{commit.title}&quot;
+  </p>
+</div>
     </div>
   );
 }

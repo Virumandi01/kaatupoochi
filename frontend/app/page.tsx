@@ -3,89 +3,190 @@
 import { useState } from 'react';
 import axios from 'axios';
 import RepoInput from './components/RepoInput';
-import Slideshow from './components/Slideshow';
+import Calendar from './components/Calendar';
+import CommitList from './components/CommitList';
+import DetailView from './components/DetailView';
 
 export default function Home() {
-  const [commits, setCommits] = useState<any[]>([]);
-  const [explanations, setExplanations] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [commitsByDate, setCommitsByDate] = useState<Record<string, any[]>>({});
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [selectedCommits, setSelectedCommits] = useState<any[]>([]);
+  const [selectedCommitId, setSelectedCommitId] = useState<string | null>(null);
+  const [commitDetail, setCommitDetail] = useState<any>(null);
+  const [explanation, setExplanation] = useState('');
+  const [loadingRepo, setLoadingRepo] = useState(false);
+  const [loadingDetail, setLoadingDetail] = useState(false);
   const [started, setStarted] = useState(false);
+  const [repoInfo, setRepoInfo] = useState({ platform: '', owner: '', repo: '' });
+  const [totalCommits, setTotalCommits] = useState(0);
 
-  const handleFetch = async (
-    platform: string,
-    repoDetails: string
-  ) => {
-    setLoading(true);
+  // Fetch all commits for the year
+  const handleFetch = async (platform: string, repoDetails: string) => {
+    setLoadingRepo(true);
     try {
-      let fetchUrl = '';
+      const parts = repoDetails.trim().split('/');
+      const owner = parts[0]?.trim();
+      const repo = parts[1]?.trim();
 
-      if (platform === 'github') {
-        const parts = repoDetails.trim().split('/');
-        const owner = parts[0]?.trim();
-        const repo = parts[1]?.trim();
-
-        console.log('Owner:', owner);
-        console.log('Repo:', repo);
-
-        if (!owner || !repo || repo === 'undefined') {
-          alert('Please enter owner and repo name in both boxes');
-          setLoading(false);
-          return;
-        }
-
-        fetchUrl = `http://localhost:3000/api/github/commits/${owner}/${repo}?limit=10`;
-
-      } else {
-        fetchUrl = `http://localhost:3000/api/commits/${repoDetails}?limit=10`;
+      if (!owner || !repo) {
+        alert('Please enter as owner/repo');
+        setLoadingRepo(false);
+        return;
       }
 
-      const res = await axios.get(fetchUrl);
-      const fetchedCommits = res.data.commits;
-      setCommits(fetchedCommits);
-
-      const explainRes = await axios.post(
-        'http://localhost:3000/api/explain',
-        { commits: fetchedCommits }
+      const res = await axios.get(
+        `http://localhost:3000/api/github/commits/${owner}/${repo}/all`
       );
-      setExplanations(explainRes.data.explanations);
+
+      setCommitsByDate(res.data.commits_by_date);
+      setTotalCommits(res.data.total_commits);
+      setRepoInfo({ platform, owner, repo });
       setStarted(true);
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (_err) {
-      alert('Could not fetch commits. Check your repo details.');
+      alert('Could not fetch repo. Check your details.');
     }
-    setLoading(false);
+    setLoadingRepo(false);
+  };
+
+  // When a day is clicked on calendar
+  const handleDayClick = (date: string, commits: any[]) => {
+    setSelectedDate(date);
+    setSelectedCommits(commits);
+    setSelectedCommitId(null);
+    setCommitDetail(null);
+    setExplanation('');
+  };
+
+  // When a commit is clicked on left panel
+  const handleCommitClick = async (commitId: string) => {
+    setSelectedCommitId(commitId);
+    setLoadingDetail(true);
+    setExplanation('');
+    setCommitDetail(null);
+
+    try {
+      // Get commit details
+      const detailRes = await axios.get(
+        `http://localhost:3000/api/github/commits/${repoInfo.owner}/${repoInfo.repo}/detail/${commitId}`
+      );
+      const detail = detailRes.data.commit;
+      setCommitDetail(detail);
+
+      // Get AI explanation
+      const explainRes = await axios.post(
+        'http://localhost:3000/api/explain',
+        { commits: [detail] }
+      );
+      const exp = explainRes.data.explanations[0]?.simple_explanation || 'No explanation available';
+      setExplanation(exp);
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (_err) {
+      setExplanation('Could not load explanation.');
+    }
+    setLoadingDetail(false);
   };
 
   const handleReset = () => {
     setStarted(false);
-    setCommits([]);
-    setExplanations([]);
+    setCommitsByDate({});
+    setSelectedDate(null);
+    setSelectedCommits([]);
+    setSelectedCommitId(null);
+    setCommitDetail(null);
+    setExplanation('');
   };
 
   return (
-    <main className="min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center p-6">
-      <div className="mb-8 text-center">
-        <h1 className="text-5xl font-bold text-green-400 mb-2">
-          Kaatupoochi
-        </h1>
-        <p className="text-gray-400 text-lg">
-          Git history — made human
-        </p>
+    <main className="min-h-screen bg-gray-950 text-white p-6">
+
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-3xl font-bold text-green-400">
+            Kaatupoochi
+          </h1>
+          <p className="text-gray-500 text-sm">
+            Git history — made human
+          </p>
+        </div>
+        {started && (
+          <div className="flex items-center gap-4">
+            <div className="text-right">
+              <p className="text-white text-sm font-medium">
+                {repoInfo.owner}/{repoInfo.repo}
+              </p>
+              <p className="text-gray-500 text-xs">
+                {totalCommits} commits in the past year
+              </p>
+            </div>
+            <button
+              onClick={handleReset}
+              className="px-4 py-2 bg-gray-800 hover:bg-gray-700
+                         rounded-xl text-gray-400 text-sm transition-all"
+            >
+              Change repo
+            </button>
+          </div>
+        )}
       </div>
 
       {!started ? (
-        <RepoInput onFetch={handleFetch} loading={loading} />
+        <div className="flex items-center justify-center min-h-96">
+          <RepoInput onFetch={handleFetch} loading={loadingRepo} />
+        </div>
       ) : (
-        <div className="w-full max-w-3xl">
-          <Slideshow commits={commits} explanations={explanations} />
-          <button
-            onClick={handleReset}
-            className="mt-6 w-full py-3 bg-gray-800 hover:bg-gray-700
-                       rounded-xl text-gray-400 transition-all duration-200"
-          >
-            Check another repo
-          </button>
+        <div className="flex flex-col gap-6">
+
+          {/* Calendar — full width on top */}
+          <div className="bg-gray-900 rounded-2xl p-5">
+            <p className="text-gray-500 text-xs uppercase tracking-widest mb-4">
+              Commit activity — click any green day
+            </p>
+            <Calendar
+              commitsByDate={commitsByDate}
+              onDayClick={handleDayClick}
+              selectedDate={selectedDate}
+            />
+          </div>
+
+          {/* Bottom — left panel + right panel */}
+          {selectedDate && (
+            <div className="grid grid-cols-4 gap-4">
+              {/* Left — commit list */}
+              <div className="col-span-1">
+                <CommitList
+                  date={selectedDate}
+                  commits={selectedCommits}
+                  selectedCommit={selectedCommitId}
+                  onCommitClick={handleCommitClick}
+                />
+              </div>
+
+              {/* Right — detail view */}
+              <div className="col-span-3">
+                <DetailView
+                  commit={commitDetail}
+                  explanation={explanation}
+                  loading={loadingDetail}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* No day selected message */}
+          {!selectedDate && (
+            <div className="text-center py-12">
+              <p className="text-gray-600 text-lg">
+                Click any green square on the calendar above
+              </p>
+              <p className="text-gray-700 text-sm mt-2">
+                Green days have commits — darker green means more commits
+              </p>
+            </div>
+          )}
         </div>
       )}
     </main>
