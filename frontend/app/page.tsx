@@ -1,20 +1,45 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 import { useState } from 'react';
+import axios from 'axios';
 import RepoInput from './components/RepoInput';
 import Slideshow from './components/Slideshow';
-import axios from 'axios'; 
+
 export default function Home() {
-  const [commits, setCommits] = useState([]);
-  const [explanations, setExplanations] = useState([]);
+  const [commits, setCommits] = useState<any[]>([]);
+  const [explanations, setExplanations] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [started, setStarted] = useState(false);
 
-  const handleFetch = async (projectId: string) => {
+  const handleFetch = async (
+    platform: string,
+    repoDetails: string
+  ) => {
     setLoading(true);
     try {
-      const res = await axios.get(
-        `http://localhost:3000/api/commits/${projectId}?limit=10`
-      );
+      let fetchUrl = '';
+
+      if (platform === 'github') {
+        const parts = repoDetails.trim().split('/');
+        const owner = parts[0]?.trim();
+        const repo = parts[1]?.trim();
+
+        console.log('Owner:', owner);
+        console.log('Repo:', repo);
+
+        if (!owner || !repo || repo === 'undefined') {
+          alert('Please enter owner and repo name in both boxes');
+          setLoading(false);
+          return;
+        }
+
+        fetchUrl = `http://localhost:3000/api/github/commits/${owner}/${repo}?limit=10`;
+
+      } else {
+        fetchUrl = `http://localhost:3000/api/commits/${repoDetails}?limit=10`;
+      }
+
+      const res = await axios.get(fetchUrl);
       const fetchedCommits = res.data.commits;
       setCommits(fetchedCommits);
 
@@ -24,11 +49,18 @@ export default function Home() {
       );
       setExplanations(explainRes.data.explanations);
       setStarted(true);
+
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (_err) {
-      alert('Could not fetch commits. Check your project ID.');
+      alert('Could not fetch commits. Check your repo details.');
     }
     setLoading(false);
+  };
+
+  const handleReset = () => {
+    setStarted(false);
+    setCommits([]);
+    setExplanations([]);
   };
 
   return (
@@ -45,7 +77,16 @@ export default function Home() {
       {!started ? (
         <RepoInput onFetch={handleFetch} loading={loading} />
       ) : (
-        <Slideshow commits={commits} explanations={explanations} />
+        <div className="w-full max-w-3xl">
+          <Slideshow commits={commits} explanations={explanations} />
+          <button
+            onClick={handleReset}
+            className="mt-6 w-full py-3 bg-gray-800 hover:bg-gray-700
+                       rounded-xl text-gray-400 transition-all duration-200"
+          >
+            Check another repo
+          </button>
+        </div>
       )}
     </main>
   );

@@ -26,9 +26,9 @@ export default function CommitSlide({ commit, explanation, slideNumber, total }:
         <p className="text-xs text-green-500 uppercase tracking-widest mb-2">
           What happened
         </p>
-        <p className="text-green-100 text-xl font-medium leading-relaxed">
-          {explanation}
-        </p>
+       <p className="text-green-100 text-lg font-medium leading-relaxed whitespace-pre-line">
+  {explanation}
+</p>
       </div>
 
       {/* Stats row */}

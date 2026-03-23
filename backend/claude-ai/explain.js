@@ -1,53 +1,58 @@
 const express = require('express');
 const router = express.Router();
-const Anthropic = require('@anthropic-ai/sdk');
+const { GoogleGenAI } = require('@google/genai');
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+// Anthropic kept for later
+// const Anthropic = require('@anthropic-ai/sdk');
 
-// POST /api/explain
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
 router.post('/', async (req, res) => {
   try {
     const { commits } = req.body;
 
     if (!commits || commits.length === 0) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'No commits provided' 
+      return res.status(400).json({
+        success: false,
+        error: 'No commits provided'
       });
     }
 
     const commitsText = commits.map((c, i) =>
-      `Commit ${i + 1}: "${c.title}" by ${c.author} on ${new Date(c.date).toDateString()}. 
+      `Commit ${i + 1}: "${c.title}" by ${c.author} on ${new Date(c.date).toDateString()}.
        Changes: +${c.additions} lines added, -${c.deletions} lines removed.`
     ).join('\n');
 
-    const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 1000,
-      messages: [{
-        role: 'user',
-        content: `You are Kaatupoochi, a friendly assistant that explains Git commits 
-        in simple plain English for beginner developers.
-        
-        Explain each of these commits in ONE simple sentence that even a 
-        non-developer can understand. Use simple words. 
-        No technical jargon. Make it friendly.
-        
-        Commits:
-        ${commitsText}
-        
-        Return a JSON array like this:
-        [
-          { "id": "commit_id", "simple_explanation": "You added a login button to the app" },
-          ...
-        ]
-        Return ONLY the JSON array. Nothing else.`
-      }]
+    const prompt = `You are Kaatupoochi, a professional code change reporter.
+    
+    For each Git commit below, write a professional summary as if reporting 
+    to a team leader or project manager. Include:
+    
+    1. What was changed — in simple clear words
+    2. Why it matters — impact on the project
+    3. Who will benefit — developers, users, or both
+    
+    Keep each explanation between 3-4 sentences.
+    Use professional but simple language.
+    No technical jargon. Anyone should understand it.
+    
+    Commits:
+    ${commitsText}
+    
+    Return a JSON array like this:
+    [
+      { 
+        "id": "commit_id", 
+        "simple_explanation": "The team updated the login system to prevent crashes when a user tries to sign in without an account. This fix improves app stability and prevents users from seeing error screens. Both the development team and end users benefit from this change as it makes the app more reliable."
+      }
+    ]
+    Return ONLY the JSON array. Nothing else. No markdown, no backticks.`;
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
     });
 
-    const responseText = message.content[0].text;
+    const responseText = response.text;
     const cleaned = responseText.replace(/```json|```/g, '').trim();
     const explanations = JSON.parse(cleaned);
 
@@ -57,10 +62,10 @@ router.post('/', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Claude error:', error.message);
-    res.status(500).json({ 
-      success: false, 
-      error: error.message 
+    console.error('Gemini error:', error.message);
+    res.status(500).json({
+      success: false,
+      error: error.message
     });
   }
 });

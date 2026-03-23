@@ -7,10 +7,12 @@ app.use(cors());
 app.use(express.json());
 
 const commitsRoute = require('./gitlab-api/commits');
+const githubCommitsRoute = require('./gitlab-api/github-commits');
 const explainRoute = require('./claude-ai/explain');
 const autosaveRoute = require('./autosave/autosave');
 
 app.use('/api/commits', commitsRoute);
+app.use('/api/github/commits', githubCommitsRoute);
 app.use('/api/explain', explainRoute);
 app.use('/api/autosave', autosaveRoute);
 
