@@ -14,5 +14,4 @@ out/
 # Mac system files
 .DS_Store
 
-# Logs
 *.log
