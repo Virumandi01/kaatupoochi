@@ -10,6 +10,7 @@ const octokit = new Octokit({
 router.get('/:owner/:repo/all', async (req, res) => {
   try {
     const { owner, repo } = req.params;
+    const { branch = 'main' } = req.query;
 
     const since = new Date();
     since.setFullYear(since.getFullYear() - 1);
@@ -18,13 +19,14 @@ router.get('/:owner/:repo/all', async (req, res) => {
     let page = 1;
 
     while (true) {
-      const { data } = await octokit.repos.listCommits({
-        owner,
-        repo,
-        since: since.toISOString(),
-        per_page: 100,
-        page,
-      });
+     const { data } = await octokit.repos.listCommits({
+  owner,
+  repo,
+  sha: branch,
+  since: since.toISOString(),
+  per_page: 100,
+  page,
+});
 
       if (data.length === 0) break;
       allCommits = allCommits.concat(data);
@@ -58,6 +60,36 @@ router.get('/:owner/:repo/all', async (req, res) => {
 
   } catch (error) {
     console.error('GitHub error:', error.message);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// 1.5 GET /api/github/commits/:owner/:repo/branches
+router.get('/:owner/:repo/branches', async (req, res) => {
+  try {
+    const { owner, repo } = req.params;
+
+    const { data } = await octokit.repos.listBranches({
+      owner,
+      repo,
+      per_page: 100,
+    });
+
+    const branches = data.map(b => ({
+      name: b.name,
+      isDefault: b.name === 'main' || b.name === 'master',
+    }));
+
+    res.json({
+      success: true,
+      branches,
+    });
+
+  } catch (error) {
+    console.error('Branches error:', error.message);
     res.status(500).json({
       success: false,
       error: error.message

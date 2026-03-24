@@ -5,9 +5,11 @@ interface Props {
   commitsByDate: Record<string, any[]>;
   onDayClick: (date: string, commits: any[]) => void;
   selectedDate: string | null;
+  selectedBranch: string;
 }
 
-export default function Calendar({ commitsByDate, onDayClick, selectedDate }: Props) {
+export default function Calendar({ commitsByDate, onDayClick, selectedDate, selectedBranch }: Props) {
+  void selectedBranch;
   const today = new Date();
   const oneYearAgo = new Date();
   oneYearAgo.setFullYear(today.getFullYear() - 1);
