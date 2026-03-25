@@ -156,7 +156,6 @@ export default function Home() {
       setActivityMap(res.data.activity);
       const total = Object.values(res.data.activity).reduce((sum: any, count: any) => sum + count, 0);
       setTotalCommits(total as number);
-      
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (_err) {
       alert('Could not fetch branch commits.');

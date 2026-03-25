@@ -145,7 +145,7 @@ export default function DetailView({ commit, explanation, loading }: Props) {
 
       {/* Files list */}
       {commit.files && commit.files.length > 0 && (
-        <div>
+        <div className="mb-5">
           <p className="text-gray-500 text-xs uppercase tracking-widest mb-2">
             Files changed
           </p>
@@ -181,6 +181,22 @@ export default function DetailView({ commit, explanation, loading }: Props) {
             ))}
           </div>
         </div>
+      )}
+
+      {/* View on GitHub button */}
+      {commit.github_url && (<a
+        
+          href={commit.github_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-5 flex items-center justify-center gap-2
+                     w-full py-3 bg-gray-800 hover:bg-gray-700
+                     border border-gray-700 hover:border-green-400
+                     rounded-xl text-gray-300 hover:text-green-400
+                     text-sm font-medium transition-all duration-200"
+        >
+          View this commit on GitHub →
+        </a>
       )}
     </div>
   );
