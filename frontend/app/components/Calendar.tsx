@@ -6,16 +6,16 @@ interface Props {
   onDayClick: (date: string, commits: any[]) => void;
   selectedDate: string | null;
   selectedBranch: string;
+  loadedSince: string;
+  loadedUntil: string;
 }
 
-export default function Calendar({ commitsByDate, onDayClick, selectedDate, selectedBranch }: Props) {
-  void selectedBranch;
+export default function Calendar({ commitsByDate, onDayClick, selectedDate, selectedBranch: _selectedBranch, loadedSince, loadedUntil }: Props) { // eslint-disable-line @typescript-eslint/no-unused-vars
   const today = new Date();
   const oneYearAgo = new Date();
   oneYearAgo.setFullYear(today.getFullYear() - 1);
   oneYearAgo.setDate(oneYearAgo.getDate() + 1);
 
-  // Group weeks by month
   const monthGroups: {
     label: string;
     year: number;
@@ -30,7 +30,6 @@ export default function Calendar({ commitsByDate, onDayClick, selectedDate, sele
     const weeks: { date: string | null }[][] = [];
     let currentWeek: { date: string | null }[] = [];
 
-    // Pad first week
     const firstDayOfWeek = new Date(cursor.getFullYear(), cursor.getMonth(), 1).getDay();
     for (let i = 0; i < firstDayOfWeek; i++) {
       currentWeek.push({ date: null });
@@ -46,7 +45,6 @@ export default function Calendar({ commitsByDate, onDayClick, selectedDate, sele
       cursor.setDate(cursor.getDate() + 1);
     }
 
-    // Pad last week
     while (currentWeek.length > 0 && currentWeek.length < 7) {
       currentWeek.push({ date: null });
     }
@@ -57,16 +55,30 @@ export default function Calendar({ commitsByDate, onDayClick, selectedDate, sele
 
   const getColor = (date: string) => {
     const count = commitsByDate[date]?.length || 0;
-    if (count === 0) return 'bg-gray-800';
-    if (count === 1) return 'bg-green-900';
-    if (count === 2) return 'bg-green-700';
-    if (count === 3) return 'bg-green-500';
+    const dateObj = new Date(date);
+    const since = loadedSince ? new Date(loadedSince) : null;
+    const until = loadedUntil ? new Date(loadedUntil) : null;
+
+    // Not yet loaded — gray
+    if (since && until && (dateObj < since || dateObj > until)) {
+      return 'bg-gray-700 opacity-40';
+    }
+
+    // Loaded but no commits — dark
+    if (count === 0) return 'bg-gray-900';
+
+    // 6 shades of green
+    if (count === 1) return 'bg-green-950';
+    if (count === 2) return 'bg-green-900';
+    if (count === 3) return 'bg-green-700';
+    if (count <= 5) return 'bg-green-600';
+    if (count <= 9) return 'bg-green-500';
     return 'bg-green-400';
   };
-
   return (
     <div className="w-full overflow-x-auto pb-2">
       <div className="flex gap-3">
+
         {/* Day labels */}
         <div className="flex flex-col gap-1 mt-6 mr-1">
           {['S','M','T','W','T','F','S'].map((d, i) => (
@@ -126,15 +138,17 @@ export default function Calendar({ commitsByDate, onDayClick, selectedDate, sele
       </div>
 
       {/* Legend */}
-      <div className="flex items-center gap-2 mt-3 justify-end">
-        <span className="text-gray-500 text-xs">Less</span>
-        <div className="w-3 h-3 rounded-sm bg-gray-800"/>
-        <div className="w-3 h-3 rounded-sm bg-green-900"/>
-        <div className="w-3 h-3 rounded-sm bg-green-700"/>
-        <div className="w-3 h-3 rounded-sm bg-green-500"/>
-        <div className="w-3 h-3 rounded-sm bg-green-400"/>
-        <span className="text-gray-500 text-xs">More</span>
-      </div>
+<div className="flex items-center gap-2 mt-3 justify-end">
+  <span className="text-gray-500 text-xs">Less</span>
+  <div className="w-3 h-3 rounded-sm bg-gray-900"/>
+  <div className="w-3 h-3 rounded-sm bg-green-950"/>
+  <div className="w-3 h-3 rounded-sm bg-green-900"/>
+  <div className="w-3 h-3 rounded-sm bg-green-700"/>
+  <div className="w-3 h-3 rounded-sm bg-green-500"/>
+  <div className="w-3 h-3 rounded-sm bg-green-400"/>
+  <span className="text-gray-500 text-xs">More</span>
+  <span className="text-gray-500 text-xs ml-4">Gray = not loaded</span>
+</div>
     </div>
   );
 }
